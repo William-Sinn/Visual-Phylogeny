@@ -1,0 +1,4 @@
+python3 main.py -i input_seqs/sample.fasta -o output_imgs/sample.png -w -v
+python3 main.py -i input_seqs/testin.fasta -o output_imgs/testin.png -w -v
+python3 main.py -i input_seqs/Chap5_mtDNA_FASTA.fasta -o output_imgs/Chap5_mtDNA_FASTA.png -w -v
+python3 main.py -i input_seqs/CompleteMTGenomes_MAFFT_STRPD.FASTA -o output_imgs/CompleteMTGenomes_MAFFT_STRPD.png -w -v
