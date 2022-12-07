@@ -1,6 +1,7 @@
 from Bio import SeqIO
 from scipy import spatial
-import hammingdist
+from ete3 import Tree
+from argparse import ArgumentParser, SUPPRESS
 
 
 class Species:
@@ -48,7 +49,7 @@ def print_matrix(matrix, species_dict=None):
 
     for row in matrix:
         (lambda: None if type(species_dict) is not dict
-        else print(f"{species_dict[row_index]:<12}", end=""))()
+         else print(f"{species_dict[row_index]:<12}", end=""))()
 
         for item in row:
             print(f'{item}'.center(10),
@@ -126,14 +127,10 @@ def neighbor_joining_matrix_gen(matrix):
 # for testing only!!!for testing only!!!for testing only!!!for testing only!!!for testing only!!!
 def recon(matrix):
     print_matrix(matrix)
-    new_mat = neighbor_joining_matrix_gen(matrix)
-
-    for row in range(len(new_mat)):
+    for row in range(len(matrix)):
         for i in range(len(matrix)):
-            print(get_value_llt(matrix, row, i), end=" ")
+            print((get_value_llt(matrix, row, i)), end=" ")
         print("")
-
-
 # for testing only!!!for testing only!!!for testing only!!!for testing only!!!for testing only!!!
 
 
@@ -142,9 +139,10 @@ def neighbor_joining_phylogeny(matrix, species_dict):
 
     if matrix_len == 2:
         keys = list(species_dict.keys())
-        return f"({species_dict[keys[0]].name}, {species_dict[keys[1]].name})"
+        return f"({species_dict[keys[0]].name},{species_dict[keys[1]].name})"
 
     matrix_prime = neighbor_joining_matrix_gen(matrix)
+    matrix_dists = get_dists_matrix(matrix)
     min_distance = (0, 0)
 
     row_index = 0
@@ -156,15 +154,16 @@ def neighbor_joining_phylogeny(matrix, species_dict):
             col_index += 1
         row_index += 1
 
-    # delta_ij = (matrix_dists[min_distance[1]] - matrix_dists[min_distance[0]]) / (matrix_len - 2)
-    #
-    # limb_length = (lambda i, j, plus: (matrix[i][j] + delta_ij) / 2 if plus
-    # else (matrix[i][j] - delta_ij) / 2)
-    #
-    # limb_len_i = limb_length(min_distance[0], min_distance[1], True)
-    # limb_len_j = limb_length(min_distance[0], min_distance[1], False)
+    delta_ij = (matrix_dists[min_distance[1]] - matrix_dists[min_distance[0]]) / (matrix_len - 2)
 
-    group = f"({species_dict[min_distance[0]].name}, {species_dict[min_distance[1]].name})"
+    limb_length = (lambda i, j, plus: (matrix[i][j] + delta_ij) / 2 if plus
+    else (matrix[i][j] - delta_ij) / 2)
+
+    limb_len_i = limb_length(min_distance[0], min_distance[1], True)
+    limb_len_j = limb_length(min_distance[0], min_distance[1], False)
+
+    # group = f"({species_dict[min_distance[0]].name},{species_dict[min_distance[1]].name})"
+    group = f"({species_dict[min_distance[0]].name}:{limb_len_i},{species_dict[min_distance[1]].name}:{limb_len_j})"
 
     new_matrix = [[0]]
 
@@ -184,50 +183,41 @@ def neighbor_joining_phylogeny(matrix, species_dict):
                     new_row.append(matrix[row][col])
 
             new_matrix.append(new_row)
-    # print_matrix(matrix)
-    # print_matrix(matrix_prime)
-    # print(min_distance)
-    # print(group)
-    # print(matrix_prime[min_distance[0]][min_distance[1]])
+
+    print_matrix(matrix)
+    print_matrix(matrix_prime)
     return neighbor_joining_phylogeny(new_matrix, new_dict)
 
 
+# display usage command cli input
+def get_usage():
+    usage = "main.py -i <input_file> -o <output_file> -w -v "
+
+    return usage
+
+
 if __name__ == '__main__':
-    in_matrix, s_dict = matrix_gen("input_seqs/testin.fasta")
-    simple_in, s_dict2 = matrix_gen("input_seqs/sample.fasta")
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument("-i", help=SUPPRESS, required=True)
+    parser.add_argument("-o", help=SUPPRESS, required=True)
+    parser.add_argument("-w", help=SUPPRESS, action="store_true")
+    parser.add_argument("-v", help=SUPPRESS, action="store_true")
 
-    sample_matrix = [
-        [0, 13, 21, 22],
-        [13, 0, 12, 13],
-        [21, 12, 0, 13],
-        [22, 13, 13, 0]
-    ]
-    sample_dict = {0: Cluster("i"), 1: Cluster("j"), 2: Cluster("k"), 3: Cluster("l")}
+    parser.usage = get_usage()
 
-    # print_matrix(sample_matrix)
-    # nj_mat = neighbor_joining_matrix_gen(sample_matrix)
-    # print_matrix(nj_mat, sample_dict)
-    # print(neighbor_joining_phylogeny(sample_matrix, sample_dict))
-    # print()
-    #
-    # print_matrix(in_matrix)
-    # nj_mat2 = neighbor_joining_matrix_gen(in_matrix)
-    # print_matrix(nj_mat2, s_dict)
-    # print("output")
-    print(neighbor_joining_phylogeny(in_matrix, s_dict))
-    # print()
-    #
-    # print_matrix(simple_in)
-    # nj_mat3 = neighbor_joining_matrix_gen(simple_in)
-    # print_matrix(nj_mat3, s_dict2)
-    print(neighbor_joining_phylogeny(simple_in, s_dict2))
-    # print()
+    args = parser.parse_args()
 
-    ch5_mat, ch5_dict = matrix_gen("input_seqs/Chap5_mtDNA_FASTA.fasta")
-    print(neighbor_joining_phylogeny(ch5_mat, ch5_dict))
+    in_matrix, in_dict = matrix_gen(args.i)
+    in_nj_mat = neighbor_joining_matrix_gen(in_matrix)
+    in_grp = neighbor_joining_phylogeny(in_matrix, in_dict)
+    in_tree = Tree(f"{in_grp};")
 
-    ch5_mat, ch5_dict = matrix_gen("input_seqs/CompleteMTGenomes_MAFFT_STRPD.FASTA")
-    print(neighbor_joining_phylogeny(ch5_mat, ch5_dict))
+    if args.v:
+        print_matrix(in_matrix, in_dict)
+        print_matrix(in_nj_mat, in_dict)
+        print(in_grp)
 
-    # recon(in_matrix)
+    if args.w:
+        in_tree.show()
 
+    in_tree.render(args.o)
