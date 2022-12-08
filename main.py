@@ -183,9 +183,11 @@ def neighbor_joining_phylogeny(matrix, species_dict):
                     new_row.append(matrix[row][col])
 
             new_matrix.append(new_row)
+    global args
+    if args.v:
+        print_matrix(matrix)
+        print_matrix(matrix_prime)
 
-    print_matrix(matrix)
-    print_matrix(matrix_prime)
     return neighbor_joining_phylogeny(new_matrix, new_dict)
 
 
